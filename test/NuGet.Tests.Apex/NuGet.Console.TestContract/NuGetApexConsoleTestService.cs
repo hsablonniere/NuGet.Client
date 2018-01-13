@@ -3,6 +3,8 @@
 
 using System;
 using System.ComponentModel.Composition;
+using System.Diagnostics;
+using System.Threading;
 using NuGet.VisualStudio;
 using NuGetConsole;
 using NuGetConsole.Implementation.PowerConsole;
@@ -13,10 +15,28 @@ namespace NuGet.Console.TestContract
     public class NuGetApexConsoleTestService
     {
         private Lazy<IWpfConsole> _wpfConsole => new Lazy<IWpfConsole>(GetWpfConsole);
+        private static readonly TimeSpan _timeout = TimeSpan.FromMinutes(10);
+
         private IWpfConsole GetWpfConsole()
         {
-            var outputConsoleWindow = ServiceLocator.GetInstance<IPowerConsoleWindow>() as PowerConsoleWindow;
-            return outputConsoleWindow.ActiveHostInfo.WpfConsole;
+            PowerConsoleWindow powershellConsole = null;
+            var timer = Stopwatch.StartNew();
+
+            while (powershellConsole?.ActiveHostInfo?.WpfConsole == null)
+            {
+                try
+                {
+                    var outputConsoleWindow = ServiceLocator.GetInstance<IPowerConsoleWindow>();
+                    powershellConsole = outputConsoleWindow as PowerConsoleWindow;
+                }
+                catch when (timer.Elapsed < _timeout)
+                {
+                    // Retry until the console is loaded
+                    Thread.Sleep(100);
+                }
+            }
+
+            return powershellConsole.ActiveHostInfo.WpfConsole;
         }
 
         public NuGetApexConsoleTestService()
