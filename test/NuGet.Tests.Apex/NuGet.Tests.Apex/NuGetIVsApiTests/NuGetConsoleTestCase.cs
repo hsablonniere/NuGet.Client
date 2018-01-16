@@ -1,7 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using FluentAssertions;
 using Microsoft.Test.Apex.VisualStudio.Solution;
 using NuGet.StaFact;
 using NuGet.Test.Utility;
@@ -17,14 +20,15 @@ namespace NuGet.Tests.Apex
         }
 
         [NuGetWpfTheory]
-        [InlineData(ProjectTemplate.ClassLibrary)]
-        [InlineData(ProjectTemplate.NetCoreConsoleApp)]
-        [InlineData(ProjectTemplate.NetStandardClassLib)]
-        public void InstallPackageFromPMC(ProjectTemplate projectTemplate)
+        [MemberData(nameof(GetTemplates))]
+        public void InstallPackageFromPMCWithNoAutoRestoreVerifyAssetsFile(ProjectTemplate projectTemplate)
         {
             using (var pathContext = new SimpleTestPathContext())
             {
                 // Arrange
+                // Turn off auto restore
+                pathContext.Settings.DisableAutoRestore();
+
                 EnsureVisualStudioHost();
                 var solutionService = VisualStudio.Get<SolutionService>();
             
@@ -37,18 +41,30 @@ namespace NuGet.Tests.Apex
                 Utils.CreatePackageInSource(pathContext.PackageSource, packageName, packageVersion);
 
                 var nugetTestService = GetNuGetTestService();
-                Assert.True(nugetTestService.EnsurePackageManagerConsoleIsOpen());
+                nugetTestService.EnsurePackageManagerConsoleIsOpen().Should().BeTrue("Console was opened");
 
                 var nugetConsole = nugetTestService.GetPackageManagerConsole(project.Name);
-                
-                Assert.True(nugetConsole.InstallPackageFromPMC(packageName, packageVersion));
-                Assert.True(Utils.IsPackageInstalled(nugetConsole, project.FullPath, packageName, packageVersion));
+
+                var installed = nugetConsole.InstallPackageFromPMC(packageName, packageVersion);
+                installed.Should().BeTrue("Install-Package should pass");
+                Utils.IsPackageInstalled(nugetConsole, project.FullPath, packageName, packageVersion).Should().BeTrue("package was installed");
                 project.Build();
-                Assert.True(VisualStudio.HasNoErrorsInErrorList());
-                Assert.True(VisualStudio.HasNoErrorsInOutputWindows());
+
+                VisualStudio.HasNoErrorsInErrorList().Should().BeTrue("Errors should not exist in the error list: " + string.Join(", ", VisualStudio.ObjectModel.Shell.ToolWindows.ErrorList.Messages.Select(e => e.Description)));
+                VisualStudio.HasNoErrorsInOutputWindows().Should().BeTrue("Errors should not exist in the output window");
 
                 nugetConsole.Clear();
                 solutionService.Save();
+            }
+        }
+
+        public static IEnumerable<object[]> GetTemplates()
+        {
+            for (var i = 0; i < 10; i++)
+            {
+                //yield return new object[] { ProjectTemplate.ClassLibrary };
+                yield return new object[] { ProjectTemplate.NetCoreConsoleApp };
+                yield return new object[] { ProjectTemplate.NetStandardClassLib };
             }
         }
 
