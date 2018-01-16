@@ -48,7 +48,7 @@ namespace NuGet.Test.Utility
         {
             var section = GetOrAddSection(XML, "packageRestore");
 
-            AddEntry(section, "enabled", "true");
+            AddEntry(section, "enabled", "false");
             AddEntry(section, "automatic", "false");
 
             Save();

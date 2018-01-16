@@ -39,7 +39,7 @@ namespace NuGet.Console.TestContract
         {
             _wpfConsole.Clear();
             var command = $"Get-Package {packageId} -ProjectName {projectName}";
-            if (WaitForActionComplete(() => RunCommand(command), TimeSpan.FromMinutes(5)))
+            if (RunCommand(command, TimeSpan.FromMinutes(5)))
             {
                 var snapshot = (_wpfConsole.Content as IWpfTextViewHost).TextView.TextBuffer.CurrentSnapshot;
                 for (var i = 0; i < snapshot.LineCount; i++)
