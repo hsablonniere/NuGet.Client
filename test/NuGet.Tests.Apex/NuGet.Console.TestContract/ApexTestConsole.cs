@@ -62,7 +62,12 @@ namespace NuGet.Console.TestContract
             _wpfConsole.Clear();
         }
 
-        public void RunCommand(string command)
+        public bool RunCommand(string command, TimeSpan timeout)
+        {
+            return WaitForActionComplete(() => RunCommandWithoutWait(command), timeout);
+        }
+
+        public void RunCommandWithoutWait(string command)
         {
             if (!string.IsNullOrEmpty(command))
             {
@@ -84,36 +89,27 @@ namespace NuGet.Console.TestContract
             {
                 return false;
             }
-            var taskCompletionSource = new TaskCompletionSource<bool>();
-            EventHandler eventHandler = (s, e) => taskCompletionSource.TrySetResult(true);
 
-            (_wpfConsole.Dispatcher as IPrivateConsoleDispatcher).SetExecutingCommand(true);
-            var wpfHost = _wpfConsole.Host;
-            var asynchost = wpfHost as IAsyncHost;
-
-            try
+            using (var semaphore = new ManualResetEventSlim())
             {
-                if (asynchost != null)
-                {
-                    asynchost.ExecuteEnd += eventHandler;
-                }
+                void eventHandler(object s, EventArgs e) => semaphore.Set();
+                var dispatcher = (IPrivateConsoleDispatcher)_wpfConsole.Dispatcher;
+                dispatcher.SetExecutingCommand(true);
+                var asynchost = (IAsyncHost)_wpfConsole.Host;
+                asynchost.ExecuteEnd += eventHandler;
 
-                action();
-
-                if (!taskCompletionSource.Task.Wait(timeout))
+                try
                 {
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
+                    // Run
+                    action();
 
-            }
-            finally
-            {
-                asynchost.ExecuteEnd -= eventHandler;
-                (_wpfConsole.Dispatcher as IPrivateConsoleDispatcher).SetExecutingCommand(false);
+                    return semaphore.Wait(timeout);
+                }
+                finally
+                {
+                    asynchost.ExecuteEnd -= eventHandler;
+                    dispatcher.SetExecutingCommand(false);
+                }
             }
         }
 
