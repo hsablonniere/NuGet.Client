@@ -441,6 +441,7 @@ namespace NuGet.CommandLine
                 {
                     dgFileOutput = await GetDependencyGraphSpecAsync(projectsWithPotentialP2PReferences,
                         GetSolutionDirectory(packageRestoreInputs),
+                        packageRestoreInputs.NameOfSolutionFile,
                         ConfigFile);
                 }
                 catch (Exception ex)
@@ -549,7 +550,7 @@ namespace NuGet.CommandLine
         /// <summary>
         ///  Create a dg v2 file using msbuild.
         /// </summary>
-        private async Task<DependencyGraphSpec> GetDependencyGraphSpecAsync(string[] projectsWithPotentialP2PReferences, string solutionDirectory, string configFile)
+        private async Task<DependencyGraphSpec> GetDependencyGraphSpecAsync(string[] projectsWithPotentialP2PReferences, string solutionDirectory, string solutionName, string configFile)
         {
             // Create requests based on the solution directory if a solution was used read settings for the solution.
             // If the solution directory is null, then use config file if present
@@ -578,6 +579,7 @@ namespace NuGet.CommandLine
                 Console,
                 Recursive,
                 solutionDirectory,
+                solutionName,
                 configFile,
                 Source.ToArray(),
                 PackagesDirectory
@@ -770,6 +772,7 @@ namespace NuGet.CommandLine
         private void ProcessSolutionFile(string solutionFileFullPath, PackageRestoreInputs restoreInputs)
         {
             restoreInputs.DirectoryOfSolutionFile = Path.GetDirectoryName(solutionFileFullPath);
+            restoreInputs.NameOfSolutionFile = Path.GetFileNameWithoutExtension(solutionFileFullPath);
 
             // restore packages for the solution
             var solutionLevelPackagesConfig = Path.Combine(
@@ -812,6 +815,8 @@ namespace NuGet.CommandLine
             public bool RestoringWithSolutionFile => !string.IsNullOrEmpty(DirectoryOfSolutionFile);
 
             public string DirectoryOfSolutionFile { get; set; }
+
+            public string NameOfSolutionFile { get; set; }
 
             public List<string> PackagesConfigFiles { get; } = new List<string>();
 
