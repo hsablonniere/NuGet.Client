@@ -258,7 +258,7 @@ namespace NuGet.CommandLine
             AddPropertyIfHasValue(args, "RestoreSolutionDirectory", solutionDirectory);
             AddPropertyIfHasValue(args, "RestoreConfigFile", restoreConfigFile);
             AddPropertyIfHasValue(args, "RestorePackagesPath", packagesDirectory);
-            AddPropertyIfHasValue(args, "SolutionDir", solutionDirectory);
+            AddPropertyIfHasValue(args, "SolutionDir", solutionDirectory != null ? PathUtility.EnsureTrailingSlash(solutionDirectory) : null);
 
             // Disable parallel and use ContinueOnError since this may run on an older
             // version of MSBuild that do not support SkipNonexistentTargets.
